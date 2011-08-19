@@ -17,36 +17,26 @@ document.addEventListener('DOMContentLoaded', function(){
   var drawing = false;
 
   canvas.addEventListener('mousedown', function(event) {
-    event.preventDefault();
-    positioning = position(event);
+    drawArc(event);
     drawing = true;
-
-    context.beginPath();
-    context.arc(positioning.x, positioning.y, context.lineWidth/2, 0, Math.PI*2, true)
-    context.fill();
-    context.beginPath();
-    context.moveTo(positioning.x, positioning.y);
   }, false);
 
   canvas.addEventListener('mousemove', function(event) {
-    event.preventDefault();
     if (drawing == true) {
-      draw(event);
+      drawLine(event);
     }
   }, false);
 
   canvas.addEventListener('mouseup', function(event) {
-    event.preventDefault();
     if (drawing == true) {
-      draw(event);
+      drawLine(event);
       drawing = false;
     }
   }, false);
 
   canvas.addEventListener('mouseout', function(event) {
-    event.preventDefault();
     if (drawing == true) {
-      draw(event);
+      drawLine(event);
       drawing = false;
     }
   }, false);
@@ -73,34 +63,60 @@ document.addEventListener('DOMContentLoaded', function(){
     }, false);
   }
 
-  function draw(event) {
-    points = brush(event, positioning, context);
+  function drawArc(event) {
+    event.preventDefault();
+    positioning = position(event);
+    var points = {
+        s: 'arc'
+      , x: positioning.x
+      , y: positioning.y
+      , c: context.strokeStyle
+      , id: canvas.id
+    }
+    paint.json.emit('paint points', points);
+    painting(points);
+  }
+
+  function drawLine(event) {
+    event.preventDefault();
+    var positions = position(event);
+    var points = {
+        s: 'line'
+      , x: positions.x
+      , y: positions.y
+      , xp: positioning.x
+      , yp: positioning.y
+      , c: context.strokeStyle
+      , id: canvas.id
+    }
     paint.json.emit('paint points', points);
     painting(points);
     positioning = points;
   }
 
   function painting(points) {
-    context.strokeStyle = points.color;
-    context.fillStyle = context.strokeStyle
-    context.beginPath();
-    context.moveTo(points.x, points.y);
-    context.lineTo(points.xp, points.yp);
-    context.closePath();
-    context.stroke();
+    if (canvas.id == points.id) {
+      context.strokeStyle = points.c;
+      context.fillStyle = context.strokeStyle;
+      switch (points.s) {
+      case 'line':
+        context.beginPath();
+        context.moveTo(points.x, points.y);
+        context.lineTo(points.xp, points.yp);
+        context.closePath();
+        context.stroke();
+        break;
+      case 'arc':
+        context.beginPath();
+        context.arc(points.x, points.y, context.lineWidth/2, 0, Math.PI*2, true)
+        context.fill();
+        context.beginPath();
+        context.moveTo(points.x, points.y);
+        break;
+      }
+    }
   }
 }, false);
-
-function brush(event, positioning, context) {
-  var positions = position(event);
-  return {
-      x: positions.x
-    , y: positions.y
-    , xp: positioning.x
-    , yp: positioning.y
-    , color: context.strokeStyle
-  }
-}
 
 function position(event) {
   var rect = event.target.getBoundingClientRect();
